@@ -1,41 +1,36 @@
-name: bot-v3-scan
+name: bot-v3-scan-min
 
 on:
-  schedule:
-    - cron: '*/5 * * * 1-5'   # every 5 minutes, Mon–Fri
   workflow_dispatch:
-
-permissions:
-  contents: write
+  schedule:
+    - cron: '*/15 * * * 1-5'  # every 15 min (we'll switch to 5 after it works)
 
 jobs:
   scan:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run scanner
-        env:
-          EQUITY: ${{ secrets.EQUITY }}                # optional
-          RISK_PER_TRADE: ${{ secrets.RISK_PER_TRADE }}# optional
-          ATR_MULT: ${{ secrets.ATR_MULT }}            # optional
-          VOL_MULT: ${{ secrets.VOL_MULT }}            # optional
-          CONSENSUS_MIN: ${{ secrets.CONSENSUS_MIN }}  # optional
-        run: python main.py
+        run: |
+          echo "Hello from Actions. Running Python…"
+          python - << 'PY'
+print("Python OK")
+PY
 
       - name: Commit CSV if changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: Update trades_log_v3_min.csv
-          file_pattern: trades_log_v3_min.csv
+          commit_message: 'Update trades_log_v3_min.csv'
+          file_pattern: 'trades_log_v3_min.csv'
