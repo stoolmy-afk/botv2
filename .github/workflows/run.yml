@@ -1,0 +1,41 @@
+name: bot-v3-scan
+
+on:
+  schedule:
+    - cron: "*/5 * * * 1-5"   # every 5 min, Mon-Fri
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run scanner
+        env:
+          EQUITY: ${{ secrets.EQUITY }}                # optional: else uses 10000
+          RISK_PER_TRADE: ${{ secrets.RISK_PER_TRADE }}# optional: else 0.01
+          ATR_MULT: ${{ secrets.ATR_MULT }}            # optional: else 1.5
+          VOL_MULT: ${{ secrets.VOL_MULT }}            # optional: else 3.0
+          CONSENSUS_MIN: ${{ secrets.CONSENSUS_MIN }}  # optional: else 2
+        run: python main.py
+
+      - name: Commit CSV if changed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update trades_log_v3_min.csv"
+          file_pattern: trades_log_v3_min.csv
