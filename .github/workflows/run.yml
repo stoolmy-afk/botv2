@@ -1,19 +1,22 @@
-name: bot-v3-scan-min
+name: bot-v3-scan
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/15 * * * 1-5'  # every 15 min (we'll switch to 5 after it works)
+    - cron: '*/5 * * * 1-5'   # every 5 minutes Mon–Fri
+
+permissions:
+  contents: write
 
 jobs:
   scan:
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -22,12 +25,22 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+      # Run your bot, but NEVER fail the workflow if it exits non-zero.
       - name: Run scanner
+        env:
+          EQUITY: ${{ secrets.EQUITY }}
+          RISK_PER_TRADE: ${{ secrets.RISK_PER_TRADE }}
+          ATR_MULT: ${{ secrets.ATR_MULT }}
+          VOL_MULT: ${{ secrets.VOL_MULT }}
+          CONSENSUS_MIN: ${{ secrets.CONSENSUS_MIN }}
         run: |
-          echo "Hello from Actions. Running Python…"
-          python - << 'PY'
-print("Python OK")
-PY
+          set -e
+          echo "Starting scanner..."
+          # Run and swallow non-zero exit codes so weekends/empty runs don't fail the job.
+          python main.py || true
+          echo "Scanner finished."
+          # Ensure CSV exists so the commit step never errors on missing file.
+          test -f trades_log_v3_min.csv || echo "timestamp,date,ticker,signals,entry,stop,stop_dist,shares,risk$" > trades_log_v3_min.csv
 
       - name: Commit CSV if changed
         uses: stefanzweifel/git-auto-commit-action@v5
